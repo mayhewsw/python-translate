@@ -39,11 +39,11 @@ class Translator:
         LMPATH="/shared/corpora/ner/lorelei/"+tgt2+"/"+tgt2+"-lm.txt"
 
         if os.path.exists(LMPATH):
-            print "Reading ", LMPATH    
+            logger.info("Reading " + LMPATH)
             readLM(self.lm, LMPATH)
-            print "done reading."
+            logger.info("done reading.")
         else:
-            print "No LM today"
+            logger.info("No LM today")
 
                     
 
@@ -70,7 +70,7 @@ class Translator:
         while True:
             currprog = i / float(len(lines))
             if currprog > progress+0.1:
-                print currprog
+                logger.debug(currprog)
                 progress = currprog
 
             # Stopping condition!
@@ -156,7 +156,8 @@ class Translator:
 
                     best = max(newopts.items(), key=lambda p: p[1])
                     w = best[0]
-                    #print "best:", best[0], best[1]
+
+                    logger.debug("{0} : {1} ({2})".format(srcphrase, best[0], best[1]))
                     #print
 
                     #logger.debug(w + ", " + best[1])
@@ -205,11 +206,12 @@ class Translator:
                 outlines.append(line) 
 
         coverage = (total - missing) / float(total)    
-        print "translated", coverage, "of the corpus."
+        logger.debug("translated {0} of the corpus".format(coverage))
 
-        print "Most popular missed words:"
-        for w,s in sorted(missedwords.items(), key=lambda p: p[1], reverse=True)[:10]:
-            print w," : ",s
+        if len(missedwords) > 0:
+            logger.debug("Most popular missed words:")
+            for w,s in sorted(missedwords.items(), key=lambda p: p[1], reverse=True)[:10]:
+                logger.debug("{0} : {1}".format(w,s))
             
         return outlines
         
@@ -259,5 +261,7 @@ if __name__ == "__main__":
     else:
         print "Interactively translating from",args.source,"to", args.target
         srctext = raw_input(args.source + ">> ")
-        lines = plaintexttolines(srctext)
-        print tt.translate(lines)
+        while srctext not in ["q", "exit", "Q"]:
+            lines = plaintexttolines(srctext)
+            print args.target + ": " + linestoplaintext(tt.translate(lines))[0].strip()
+            srctext = raw_input(args.source + ">> ")

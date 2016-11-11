@@ -5,6 +5,7 @@ import codecs
 FORMAT = "[%(asctime)s] : %(filename)s.%(funcName)s():%(lineno)d - %(message)s"
 DATEFMT = '%H:%M:%S, %m/%d/%Y'
 logging.basicConfig(level=logging.DEBUG, format=FORMAT, datefmt=DATEFMT)
+#logging.basicConfig(level=logging.INFO, format=FORMAT, datefmt=DATEFMT)
 logger = logging.getLogger(__name__)
 
 LEXICONPATH="/shared/experiments/mayhew2/lexicons/"
@@ -71,15 +72,11 @@ def plaintexttolines(text):
             outlines.append("\t".join(["O", "x", "x", "x", "x", w, "x", "x", "x"]) + "\n")
 
     return outlines
-   
 
-
-def writeplaintext(outfname, outlines):
-    """ Converts conll style lines to sentences, one per line."""
-    
+def linestoplaintext(lines):
     sent = ""
     sents = []
-    for line in outlines:
+    for line in lines:
         word = getword(line)
         if word is None:
             sents.append(sent.strip() + "\n")
@@ -92,6 +89,12 @@ def writeplaintext(outfname, outlines):
             
     if sent is not "":
         sents.append(sent)
+    return sents
+    
+
+def writeplaintext(outfname, lines):
+    """ Converts conll style lines to sentences, one per line."""
+    outlines = linestoplaintext(lines)
     
     with codecs.open(outfname, "w", "utf-8") as out:
        for line in sents:
