@@ -1,3 +1,4 @@
+#  -*- coding: utf-8 -*-
 import logging
 import codecs
 
@@ -54,16 +55,24 @@ def readplaintext(fname):
 
     outlines = []
     for line in lines:
-        sline = line.split()
-        for w in sline:
-            if w[-1] in [".", ",", "!", ":", ";", "\""]:
-                outlines.append("\t".join(["0", "x", "x", "x", "x", w[:-1], "x", "x", "x"]) + "\n")
-                outlines.append("\t".join(["0", "x", "x", "x", "x", w[-1], "x", "x", "x"]) + "\n")
-            else:
-                outlines.append("\t".join(["0", "x", "x", "x", "x", w, "x", "x", "x"]) + "\n")
+        outlines.extend(plaintexttolines(line))
         outlines.append("\n")
+        
+    return outlines
+
+def plaintexttolines(text):
+    outlines = []
+    words = text.split()
+    for w in words:
+        if w[-1] in [".", ",", "!", ":", ";", "\""]:
+            outlines.append("\t".join(["O", "x", "x", "x", "x", w[:-1], "x", "x", "x"]) + "\n")
+            outlines.append("\t".join(["O", "x", "x", "x", "x", w[-1], "x", "x", "x"]) + "\n")
+        else:
+            outlines.append("\t".join(["O", "x", "x", "x", "x", w, "x", "x", "x"]) + "\n")
 
     return outlines
+   
+
 
 def writeplaintext(outfname, outlines):
     """ Converts conll style lines to sentences, one per line."""
@@ -88,3 +97,38 @@ def writeplaintext(outfname, outlines):
        for line in sents:
            out.write(line);
 
+
+def englishexpand(w):
+    ret = []
+    if w[-1] == "s":
+        ret.append(w[:-1])
+    if w.endswith("ed"):
+        ret.append(w[:-2])
+                
+    return ret
+
+def uzbekexpand(w):
+    ret = []
+
+    suffixes = ["ning", "lik", "lar", "ish", "dan", "idan", "ini","lari", "ga","ni"]
+
+    hassuffixes = True
+    modified = False
+    while hassuffixes:
+        hassuffixes = False
+        for s in suffixes:
+            if w.endswith(s):
+                modified = True
+                w = w[:-len(s)]
+                hassuffixes = True
+                
+    if modified:
+        ret.append(w)
+
+    if u"ʻ" in w:
+        ret.append(w.replace(u"ʻ", ""))
+
+    return ret
+
+
+           
