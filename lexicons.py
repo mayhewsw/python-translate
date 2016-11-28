@@ -9,10 +9,10 @@ def readlexicon(target):
     :param target: target language code (3 letters)
     """
     fname = LEXICONPATH + "{0}-eng.masterlex.txt.gz".format(target)
-    #f2e = defaultdict(list)
+    f2e = defaultdict(set)
     e2f = defaultdict(set)
 
-    print "Reading", fname
+    logger.info("Reading " + fname)
     with gzip.open(fname, "rb") as f:
         lines = f.readlines()
 
@@ -32,17 +32,17 @@ def readlexicon(target):
             pairs[(ew,fw)] += 1
             pairs[(ew.lower(),fw.lower())] += 1
 
-        #f2e[f].append(e)
+        f2e[f].add(e)
         e2f[e].add(f)
         e2f[e.lower()].add(f)
 
         # TODO: what about f.lower()?
 
     #print "Num f keys:", len(f2e)
-    print "Num e keys:", len(e2f)
+    logger.info("Num e keys: {0}.".format(len(e2f)))
     numentries = sum(map(len, e2f.values()))
-    print "Num entries:", numentries
-    print "Avg keys per entry:", float(numentries) / len(e2f)
+    logger.info("Num entries: {0}".format(numentries))
+    logger.info("Avg keys per entry: {0}".format(float(numentries) / len(e2f)))
     
     # also read Wikipedia title mapping.
     #p = "/shared/preprocessed/ctsai12/multilingual/wikidump/ta/titles.enta.align"
@@ -54,13 +54,13 @@ def readlexicon(target):
     #        eng,tgl = line.split("\t")
     #        e2f[eng].add(tgl)
             
-    return e2f,pairs
+    return e2f,f2e,pairs
 
 def getlexiconmapping(source, target):
     dct = defaultdict(lambda: defaultdict(float))
     
     if source == "eng":
-        e2f,pairs = readlexicon(target)
+        e2f,f2e,pairs = readlexicon(target)
 
         # normalize the dictionary with scores.
         for k in e2f.keys():
@@ -74,13 +74,13 @@ def getlexiconmapping(source, target):
             for p in nscores:
                 dct[k][p[0]] += p[1]
             
-        return dct
+        return dct,f2e
 
     if target == "eng":
         raise Exception("eng as target is not supported")
     
-    l1dict,pairs1 = readlexicon(source)
-    l2dict,pairs2 = readlexicon(target)
+    l1dict,l1rev,pairs1 = readlexicon(source)
+    l2dict,l2rev,pairs2 = readlexicon(target)
 
     # these are all english keys
     l1set = set(l1dict.keys())
@@ -114,7 +114,7 @@ def getlexiconmapping(source, target):
             #dct[p1[0]].append((p2[0], p1[1] * p2[1]))
             dct[p1[0]][p2[0]] += p1[1] * p2[1]
 
-    return dct
+    return dct,None
 
 
 def getFAfile(lang):
@@ -140,5 +140,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
         
     #getFAfile(args.target)
-    dct = getlexiconmapping(args.source, args.target)
-        
+    dct,f2e = getlexiconmapping(args.source, args.target)
+
+    for p in dct["spectacle"]:
+        print p
+        print f2e[p]
+        print

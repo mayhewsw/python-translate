@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #  -*- coding: utf-8 -*-
-import codecs,os
+import codecs,os,re
 import HTMLParser
 from collections import defaultdict
 import string, math
@@ -27,10 +27,18 @@ class Translator:
             print "Doesn't work right now..."
         elif self.method == "lexicon":
             import lexicons        
-            self.dct = lexicons.getlexiconmapping(self.source, self.target)
+            self.dct,_ = lexicons.getlexiconmapping(self.source, self.target)
+
+            #print "HACKING DICTIONARY WITH UN/US TOKENIZATION!"
+            #self.dct["U.N."] = defaultdict(float)
+            #self.dct["U.N."]["U . N ."] += 1
+            #self.dct["U.S."] = defaultdict(float)
+            #self.dct["U.S."]["U . S ."] += 1
+
         else:
             print "Mapping needs to be lexicon or google, is:", self.method
             self.dct = None
+
 
     def load_lm(self):
         # read the LM    
@@ -45,7 +53,6 @@ class Translator:
         else:
             logger.info("No LM today")
 
-                    
 
     def translate(self, lines):
 
@@ -70,7 +77,7 @@ class Translator:
         while True:
             currprog = i / float(len(lines))
             if currprog > progress+0.1:
-                logger.debug(currprog)
+                logger.info(currprog)
                 progress = currprog
 
             # Stopping condition!
@@ -79,12 +86,15 @@ class Translator:
 
             # open a window after position i, but stop if encounter a break.
             words = []
+            tags = set()
             for line in lines[i:i+window]:
                 wd = getword(line)
+                tag = gettag(line)
                 if wd is None:
                     break
 
-                words.append(wd)        
+                words.append(wd)
+                tags.add(tag)
 
             # allow that no words will be found (empty line)
             if len(words) == 0:
@@ -105,10 +115,16 @@ class Translator:
             found = False
             for jj in range(len(words), 0, -1):
                 srcwords = words[:jj]
-                srcphrase = " ".join(srcwords).lower()
-
+                srcphrase = " ".join(srcwords)
+                
                 hit = srcphrase in self.dct
 
+                # try lower case
+                if not hit:
+                    hit = srcphrase.lower() in self.dct
+                    if hit:
+                        srcphrase = srcphrase.lower()                
+                
                 if not hit:
                     srcexpand = englishexpand(srcphrase)
                     #srcexpand = uzbekexpand(srcphrase)
@@ -118,11 +134,11 @@ class Translator:
                             srcphrase = w
                             hit = srcphrase in self.dct
                             break
-
-                # Don't translate PER names.
-                #if jj == 1 and "PER" in sline[0]:
+                
+                # Don't translate PER/ORG
+                #if "B-PER" in tags or "I-PER" in tags:
                 #    hit = False
-
+                    
                 if hit:
                     #logger.debug(srcphrase)
 
@@ -157,13 +173,14 @@ class Translator:
                     best = max(newopts.items(), key=lambda p: p[1])
                     w = best[0]
 
-                    logger.debug("{0} : {1} ({2})".format(srcphrase, best[0], best[1]))
-                    #print
-
-                    #logger.debug(w + ", " + best[1])
+                    logger.debug(u"{0} : {1} ({2})".format(srcphrase, best[0], best[1]))
 
                     w = h.unescape(w)
 
+                    # if last word is an empty line capitalize this word.
+                    if len(outlines) > 0  and getword(outlines[-1]) == None:
+                        w = w.capitalize()
+                    
                     transwords = w.split()
 
                     # this allows us to transfer exact lines from source
@@ -187,13 +204,50 @@ class Translator:
                     found = True
                     break
 
-            # word not in dict.
+            # word not in dict. srcphrase has just 1 token
             if not found:
                 # check if lexicon doesn't contain element
-                removes = ["the", "said", "was", "has", "been", "were", "'s", "are"]
+                #removes = ["the", "said", "was", "has", "been", "were", "'s", "are"]
+                removes = []
                 if srcphrase in removes:
                     pass
+
+                
+                res = re.search('(\W+)', srcphrase)
+                if res is not None:
+                    groups = res.groups()
                 else:
+                    groups = []
+
+                # Don't want this special punctuation trick!!!
+                if len(groups) > 0 and False:
+
+                    # if there is a tag.
+                    tag = sline[0]
+
+                    g = groups[0]
+                    ssp = srcphrase.split(g)
+
+                    for chunk in ssp:
+                        sline[0] = tag
+                        sline[5] = chunk
+                        if len(chunk) > 0:
+                            addlines.append("\t".join(sline))
+
+                        if tag[0] == "B":
+                            tag = "I" + tag[1:]
+                        
+                        sline[0] = tag
+                        sline[5] = g
+                        addlines.append("\t".join(sline))
+                        
+                    # because we added too many...
+                    addlines.pop()
+
+                    missing += 1
+                    
+                else:
+                    #logger.debug("skip: {0}".format(srcphrase))
                     addlines.append("\t".join(sline))
                     if srcphrase not in ignores:
                         missing += 1
@@ -206,12 +260,12 @@ class Translator:
                 outlines.append(line) 
 
         coverage = (total - missing) / float(total)    
-        logger.debug("translated {0} of the corpus".format(coverage))
+        logger.info("translated {0} of the corpus".format(coverage))
 
         if len(missedwords) > 0:
             logger.debug("Most popular missed words:")
-            for w,s in sorted(missedwords.items(), key=lambda p: p[1], reverse=True)[:10]:
-                logger.debug("{0} : {1}".format(w,s))
+            #for w,s in sorted(missedwords.items(), key=lambda p: p[1], reverse=True)[:10]:
+            #    logger.debug("{0} : {1}".format(w,s))
             
         return outlines
         
@@ -228,7 +282,7 @@ class Translator:
             exit()
 
         # everything is done in conll format. That is... one word per line. 
-        outlines = translate(lines)
+        outlines = self.translate(lines)
         
             
         print "Writing to:", outfname
@@ -260,8 +314,11 @@ if __name__ == "__main__":
         tt.translate_file(args.input, args.output, args.format)
     else:
         print "Interactively translating from",args.source,"to", args.target
-        srctext = raw_input(args.source + ">> ")
+        srctext = ""
         while srctext not in ["q", "exit", "Q"]:
+            srctext = raw_input(args.source + ">> ")
+            if srctext == "":
+                continue
+            
             lines = plaintexttolines(srctext)
             print args.target + ": " + linestoplaintext(tt.translate(lines))[0].strip()
-            srctext = raw_input(args.source + ">> ")

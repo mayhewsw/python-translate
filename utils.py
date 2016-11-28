@@ -2,10 +2,10 @@
 import logging
 import codecs
 
-FORMAT = "[%(asctime)s] : %(filename)s.%(funcName)s():%(lineno)d - %(message)s"
-DATEFMT = '%H:%M:%S, %m/%d/%Y'
-logging.basicConfig(level=logging.DEBUG, format=FORMAT, datefmt=DATEFMT)
-#logging.basicConfig(level=logging.INFO, format=FORMAT, datefmt=DATEFMT)
+FORMAT = u"[%(asctime)s] : %(filename)s.%(funcName)s():%(lineno)d - %(message)s"
+DATEFMT = u'%H:%M:%S, %m/%d/%Y'
+#logging.basicConfig(level=logging.DEBUG, format=FORMAT, datefmt=DATEFMT)
+logging.basicConfig(level=logging.INFO, format=FORMAT, datefmt=DATEFMT)
 logger = logging.getLogger(__name__)
 
 LEXICONPATH="/shared/experiments/mayhew2/lexicons/"
@@ -35,6 +35,15 @@ def getword(line):
     if len(sline) > 5:
         return sline[5]
     return None
+
+def gettag(line):
+    """ returns the tag out of a conll line, or None if empty line """
+    sline = line.split("\t")
+    if len(sline) > 5:
+        return sline[0]
+    return None
+
+
 
 def readconll(fname):
     """ Read lines from a conll file."""
