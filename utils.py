@@ -109,7 +109,6 @@ def writeplaintext(outfname, lines):
        for line in sents:
            out.write(line);
 
-
 def englishexpand(w):
     ret = []
     if w[-1] == "s":

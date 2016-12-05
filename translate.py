@@ -1,27 +1,59 @@
 #!/usr/bin/python
 #  -*- coding: utf-8 -*-
-import codecs,os,re
+import codecs,os,re,random
 import HTMLParser
 from collections import defaultdict
 import string, math
 from srilm import *
 from utils import *
-
+from gensim.models.word2vec import *
 
 class Translator:
 
-    def __init__(self, method, source, target):
+    def __init__(self, method, source, target, lexname=None):
         self.method = method
         self.source = source
         self.target = target
         self.lm = None
 
+        self.lexname = lexname
         self.load_dictionary()
         self.load_lm()
+        #self.load_vecs()
+
+
+        self.usetaglists= False
         
-        
+        if self.usetaglists:
+            self.load_taglists()
+        else:
+            print "NOT USING TAGLISTS!"        
+
+            
     def load_dictionary(self):
-        if self.method == "google":
+        import lexicons
+        
+        if self.lexname:
+            logger.info("Opening special lexicon: " + self.lexname)
+
+            dct = defaultdict(lambda: defaultdict(float))
+            e2f,f2e,pairs = lexicons.readlexicon(self.lexname)
+
+            # normalize the dictionary with scores.
+            for k in e2f.keys():
+
+                scores = [(w, pairs[(k,w)]) for w in e2f[k]]
+
+                t1 = float(sum(map(lambda p: p[1], scores)))
+                t1 = max(0.1, t1)
+                nscores = sorted(map(lambda p: (p[0], p[1] / t1), scores), key=lambda p: p[1])
+
+                for p in nscores:
+                    dct[k][p[0]] += p[1]
+
+            self.dct = dct
+            
+        elif self.method == "google":
             #import googletrans
             #self.dct = googletrans.getgooglemapping(fname, self.source, self.target)
             print "Doesn't work right now..."
@@ -34,7 +66,6 @@ class Translator:
             #self.dct["U.N."]["U . N ."] += 1
             #self.dct["U.S."] = defaultdict(float)
             #self.dct["U.S."]["U . S ."] += 1
-
         else:
             print "Mapping needs to be lexicon or google, is:", self.method
             self.dct = None
@@ -45,7 +76,10 @@ class Translator:
         self.lm = initLM(5)
         tgt2 = langmap[self.target]
         LMPATH="/shared/corpora/ner/lorelei/"+tgt2+"/"+tgt2+"-lm.txt"
-
+        
+        LMPATH="/shared/corpora/ner/eval/column/uglm-uly.txt"
+        print "HACKED LM PATH:",LMPATH
+        
         if os.path.exists(LMPATH):
             logger.info("Reading " + LMPATH)
             readLM(self.lm, LMPATH)
@@ -54,6 +88,39 @@ class Translator:
             logger.info("No LM today")
 
 
+    def load_vecs(self):
+        logger.info("LOADING UZBEK VECTORS")
+        self.vecs = Word2Vec.load_word2vec_format('/home/mayhew2/software/word2vec/trunk/uzvectors.bin', binary=True)
+        logger.info("Done loading...")
+        self.sims = {}
+
+    def load_taglists(self):
+        """ These taglists are intended to perform a kind of translation when we can't translate entities,
+        and we don't trust transliteration. These taglists are often used as gazetteers. """
+        
+        gazdr = "/shared/corpora/ner/gazetteers/"
+        self.taglists = {}
+        lang = "ug"
+        logger.info("LOADING TAGS FROM LANG: " + lang)
+        tags = ["PER", "ORG", "LOC", "GPE"]
+        for tag in tags:
+            tgname = gazdr + lang + "/" + tag.lower()
+            with codecs.open(tgname, "r", "utf8") as f:
+                taglist = f.read().split("\n")
+                self.taglists[tag] = taglist
+            logger.info("Loaded " + tgname)
+
+
+        
+    def get_similar(self, word):
+        if word in self.sims:
+            return self.sims[word]
+        else:
+            word = word.lower()
+            cands= self.vecs.most_similar(word, topn=10)
+            self.sims[word] = cands
+            return cands
+        
     def translate(self, lines):
 
         outlines = []
@@ -86,7 +153,7 @@ class Translator:
 
             # open a window after position i, but stop if encounter a break.
             words = []
-            tags = set()
+            tags = []
             for line in lines[i:i+window]:
                 wd = getword(line)
                 tag = gettag(line)
@@ -94,7 +161,7 @@ class Translator:
                     break
 
                 words.append(wd)
-                tags.add(tag)
+                tags.append(tag)
 
             # allow that no words will be found (empty line)
             if len(words) == 0:
@@ -115,6 +182,7 @@ class Translator:
             found = False
             for jj in range(len(words), 0, -1):
                 srcwords = words[:jj]
+                srctags = tags[:jj]
                 srcphrase = " ".join(srcwords)
                 
                 hit = srcphrase in self.dct
@@ -128,16 +196,32 @@ class Translator:
                 if not hit:
                     srcexpand = englishexpand(srcphrase)
                     #srcexpand = uzbekexpand(srcphrase)
-                    for w in srcexpand:
-                        if w in self.dct:
-                            #print w, "in dct!"
-                            srcphrase = w
-                            hit = srcphrase in self.dct
-                            break
+                    try:
+                        # This activates the vector expansion.
+                        #wordscores = self.get_similar(srcphrase.lower())
+                        #srcexpand = map(lambda p: p[0], wordscores)
+                        for w in srcexpand:
+                            if w in self.dct:
+                                #print w, "in dct!"
+                                srcphrase = w
+                                hit = srcphrase in self.dct
+                                break
+                    except KeyError:
+                        pass
+                    	    
                 
                 # Don't translate PER/ORG
                 #if "B-PER" in tags or "I-PER" in tags:
                 #    hit = False
+                
+                # If srcphrase is a name, we want to translate it into the text.
+                # if first tag is B-TAG, and first matches tag of last, then 
+                if self.usetaglists and not hit and srctags[0][0] == "B" and srctags[0][2:] == srctags[-1][2:]:
+                    # get a random name from the gazetteers, put it in the dictionary.
+                    taglist = self.taglists[srctags[0][2:]]
+                    self.dct[srcphrase] = [(random.choice(taglist), 1.)]
+                    hit = True
+                    
                     
                 if hit:
                     #logger.debug(srcphrase)
@@ -173,7 +257,10 @@ class Translator:
                     best = max(newopts.items(), key=lambda p: p[1])
                     w = best[0]
 
-                    logger.debug(u"{0} : {1} ({2})".format(srcphrase, best[0], best[1]))
+                    sbest = sorted(newopts.items(), key=lambda p: p[1])
+                    for sb in sbest:
+                        logger.debug(u"{0} : {1} ({2})".format(srcphrase, sb[0], sb[1]))
+                    logger.debug("")
 
                     w = h.unescape(w)
 
@@ -304,11 +391,12 @@ if __name__ == "__main__":
     parser.add_argument("--source","-s", help="Source language code (3 letter)", default="eng")
     parser.add_argument("--target","-t", help="Target language code (3 letter)", required=True)
     parser.add_argument("--format","-f", help="Format of input file", choices=["conll", "plaintext"], default="conll")
+    parser.add_argument("--lexname","-l", help="Name of special lexicon")
 
     
     args = parser.parse_args()
 
-    tt = Translator(args.method, args.source, args.target)
+    tt = Translator(args.method, args.source, args.target, args.lexname)
     
     if args.input and args.output:
         tt.translate_file(args.input, args.output, args.format)

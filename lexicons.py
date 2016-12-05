@@ -3,12 +3,17 @@ from collections import defaultdict
 from itertools import product
 import gzip,codecs
 
-def readlexicon(target):
+
+def masterlexname(target):
+    """ If you want to use the masterlex files, they use
+    this naming convention"""
+    return LEXICONPATH + "{0}-eng.masterlex.txt.gz".format(target)
+
+def readlexicon(fname):
     """ Reads files from Katrin Kirchhoff/Mark H-J lexicons
 
     :param target: target language code (3 letters)
     """
-    fname = LEXICONPATH + "{0}-eng.masterlex.txt.gz".format(target)
     f2e = defaultdict(set)
     e2f = defaultdict(set)
 
@@ -60,7 +65,7 @@ def getlexiconmapping(source, target):
     dct = defaultdict(lambda: defaultdict(float))
     
     if source == "eng":
-        e2f,f2e,pairs = readlexicon(target)
+        e2f,f2e,pairs = readlexicon(masterlexname(target))
 
         # normalize the dictionary with scores.
         for k in e2f.keys():
@@ -79,8 +84,8 @@ def getlexiconmapping(source, target):
     if target == "eng":
         raise Exception("eng as target is not supported")
     
-    l1dict,l1rev,pairs1 = readlexicon(source)
-    l2dict,l2rev,pairs2 = readlexicon(target)
+    l1dict,l1rev,pairs1 = readlexicon(masterlexname(source))
+    l2dict,l2rev,pairs2 = readlexicon(masterlexname(target))
 
     # these are all english keys
     l1set = set(l1dict.keys())
@@ -118,7 +123,7 @@ def getlexiconmapping(source, target):
 
 
 def getFAfile(lang):
-    dct = readlexicon(lang)
+    dct = readlexicon(masterlexname(lang))
 
     out = codecs.open("text.eng-"+lang, "w", "utf8")
     
