@@ -66,14 +66,15 @@ class Translator:
             self.dct,_ = lexicons.getlexiconmapping(self.source, self.target)
 
         else:
-            print("Mapping needs to be lexicon or google, is:", self.method)
+            logger.error("Mapping needs to be lexicon or google, is:", self.method)
             self.dct = None
 
 
     def load_lm(self):
-        # read the LM    
-        self.lm = initLM(5)
+        # read the LM: initialize with     
+        self.lm = initLM(3)
         tgt2 = langmap[self.target]
+        # this is the path of a language model created by SRILM.
         LMPATH="/shared/corpora/ner/lorelei/"+tgt2+"/"+tgt2+"-lm.txt"
         
         if os.path.exists(LMPATH):

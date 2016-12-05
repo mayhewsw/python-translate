@@ -17,15 +17,23 @@ Installation:
 
 ## Requirements
 
-This relies on the [swig-srilm wrapper](https://github.com/desilinguist/swig-srilm/)
+* [swig-srilm wrapper](https://github.com/desilinguist/swig-srilm/)
+* [gensim](https://radimrehurek.com/gensim/) (if you want to use the word vector expansion part)
+* Language model created by [SRILM](http://www.speech.sri.com/projects/srilm/).
+
+Here's the simplest possible way to make a language model (<input file> is just a text file):
+
+    $ ngram-count -text <input file> -lm <output file>
+
+See [ngram-count](http://www.speech.sri.com/projects/srilm/manpages/ngram-count.1.html) for more documentation.
 
 ## Usage
 
 To translate a file:
 
-    $ ./translate.py 
+   $ python translate.py -i <input file> -o <output file> -s <src lang> -t <target lang>
 
 To translate interactively (from English, to Turkish):
 
-    $ ./translate.py -t tur
+    $ python translate.py -t tur
 
