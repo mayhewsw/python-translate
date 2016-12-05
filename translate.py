@@ -1,7 +1,7 @@
 #!/usr/bin/python
 #  -*- coding: utf-8 -*-
 import codecs,os,re,random
-import HTMLParser
+import html.parser
 from collections import defaultdict
 import string, math
 from srilm import *
@@ -19,15 +19,19 @@ class Translator:
         self.lexname = lexname
         self.load_dictionary()
         self.load_lm()
-        #self.load_vecs()
 
+        # Change this here if you want to...
+        self.usevecs = False
+        if self.usevecs:
+            self.load_vecs()
+        else:
+            logger.info("NOT USING VECTOR EXPANSION")
 
-        self.usetaglists= False
-        
+        self.usetaglists= False        
         if self.usetaglists:
             self.load_taglists()
         else:
-            print "NOT USING TAGLISTS!"        
+            logger.info("NOT USING TAGLISTS!")        
 
             
     def load_dictionary(self):
@@ -40,13 +44,13 @@ class Translator:
             e2f,f2e,pairs = lexicons.readlexicon(self.lexname)
 
             # normalize the dictionary with scores.
-            for k in e2f.keys():
+            for k in list(e2f.keys()):
 
                 scores = [(w, pairs[(k,w)]) for w in e2f[k]]
 
-                t1 = float(sum(map(lambda p: p[1], scores)))
+                t1 = float(sum([p[1] for p in scores]))
                 t1 = max(0.1, t1)
-                nscores = sorted(map(lambda p: (p[0], p[1] / t1), scores), key=lambda p: p[1])
+                nscores = sorted([(p[0], p[1] / t1) for p in scores], key=lambda p: p[1])
 
                 for p in nscores:
                     dct[k][p[0]] += p[1]
@@ -56,18 +60,13 @@ class Translator:
         elif self.method == "google":
             #import googletrans
             #self.dct = googletrans.getgooglemapping(fname, self.source, self.target)
-            print "Doesn't work right now..."
+            print("Doesn't work right now...")
         elif self.method == "lexicon":
             import lexicons        
             self.dct,_ = lexicons.getlexiconmapping(self.source, self.target)
 
-            #print "HACKING DICTIONARY WITH UN/US TOKENIZATION!"
-            #self.dct["U.N."] = defaultdict(float)
-            #self.dct["U.N."]["U . N ."] += 1
-            #self.dct["U.S."] = defaultdict(float)
-            #self.dct["U.S."]["U . S ."] += 1
         else:
-            print "Mapping needs to be lexicon or google, is:", self.method
+            print("Mapping needs to be lexicon or google, is:", self.method)
             self.dct = None
 
 
@@ -76,9 +75,6 @@ class Translator:
         self.lm = initLM(5)
         tgt2 = langmap[self.target]
         LMPATH="/shared/corpora/ner/lorelei/"+tgt2+"/"+tgt2+"-lm.txt"
-        
-        LMPATH="/shared/corpora/ner/eval/column/uglm-uly.txt"
-        print "HACKED LM PATH:",LMPATH
         
         if os.path.exists(LMPATH):
             logger.info("Reading " + LMPATH)
@@ -89,30 +85,32 @@ class Translator:
 
 
     def load_vecs(self):
-        logger.info("LOADING UZBEK VECTORS")
-        self.vecs = Word2Vec.load_word2vec_format('/home/mayhew2/software/word2vec/trunk/uzvectors.bin', binary=True)
+        VECPATH=""
+        self.vecs = Word2Vec.load_word2vec_format(VECPATH, binary=True)
         logger.info("Done loading...")
         self.sims = {}
 
     def load_taglists(self):
         """ These taglists are intended to perform a kind of translation when we can't translate entities,
         and we don't trust transliteration. These taglists are often used as gazetteers. """
-        
+
+        # These all may change based on the availability of taglists
+        lang = "tr"
         gazdr = "/shared/corpora/ner/gazetteers/"
-        self.taglists = {}
-        lang = "ug"
-        logger.info("LOADING TAGS FROM LANG: " + lang)
         tags = ["PER", "ORG", "LOC", "GPE"]
+        
+        self.taglists = {}
+        logger.info("LOADING TAGS FROM LANG: " + lang)
+
         for tag in tags:
             tgname = gazdr + lang + "/" + tag.lower()
             with codecs.open(tgname, "r", "utf8") as f:
                 taglist = f.read().split("\n")
                 self.taglists[tag] = taglist
             logger.info("Loaded " + tgname)
-
-
         
     def get_similar(self, word):
+        """ Use word vectors for word expansion """
         if word in self.sims:
             return self.sims[word]
         else:
@@ -122,16 +120,16 @@ class Translator:
             return cands
         
     def translate(self, lines):
-
+        """ The main function """
         outlines = []
         missing = 0
         total = 0
         missedwords = defaultdict(int)
-        h = HTMLParser.HTMLParser()
+        h = html.parser.HTMLParser()
 
         # this is a set of words to be ignored when counting translation failures
         ignores = list(string.punctuation)
-        ignores.extend(map(str, range(2050)))
+        ignores.extend(list(map(str, list(range(2050)))))
         ignores.append("-DOCSTART-")
         ignores.append("--")
 
@@ -195,14 +193,13 @@ class Translator:
                 
                 if not hit:
                     srcexpand = englishexpand(srcphrase)
-                    #srcexpand = uzbekexpand(srcphrase)
                     try:
                         # This activates the vector expansion.
-                        #wordscores = self.get_similar(srcphrase.lower())
-                        #srcexpand = map(lambda p: p[0], wordscores)
+                        if self.usevecs:
+                            wordscores = self.get_similar(srcphrase.lower())
+                            srcexpand = map(lambda p: p[0], wordscores)
                         for w in srcexpand:
-                            if w in self.dct:
-                                #print w, "in dct!"
+                            if w in self.dct:                                
                                 srcphrase = w
                                 hit = srcphrase in self.dct
                                 break
@@ -221,8 +218,7 @@ class Translator:
                     taglist = self.taglists[srctags[0][2:]]
                     self.dct[srcphrase] = [(random.choice(taglist), 1.)]
                     hit = True
-                    
-                    
+                                        
                 if hit:
                     #logger.debug(srcphrase)
 
@@ -254,12 +250,12 @@ class Translator:
                             #newopts[opt] = math.log(score)
                             #newopts[opt] = random.random()
 
-                    best = max(newopts.items(), key=lambda p: p[1])
+                    best = max(list(newopts.items()), key=lambda p: p[1])
                     w = best[0]
 
-                    sbest = sorted(newopts.items(), key=lambda p: p[1])
+                    sbest = sorted(list(newopts.items()), key=lambda p: p[1])
                     for sb in sbest:
-                        logger.debug(u"{0} : {1} ({2})".format(srcphrase, sb[0], sb[1]))
+                        logger.debug("{0} : {1} ({2})".format(srcphrase, sb[0], sb[1]))
                     logger.debug("")
 
                     w = h.unescape(w)
@@ -365,20 +361,20 @@ class Translator:
         elif format == "plaintext":
             lines = readplaintext(fname)
         else:
-            print "Format not known: " + format
+            print("Format not known: " + format)
             exit()
 
         # everything is done in conll format. That is... one word per line. 
         outlines = self.translate(lines)
         
             
-        print "Writing to:", outfname
+        print("Writing to:", outfname)
         if format == "conll":
             writeconll(outfname, outlines)
         elif format == "plaintext":
             writeplaintext(outfname, outlines)
         else:
-            print "Unknown format: " + format
+            print("Unknown format: " + format)
     
 
 if __name__ == "__main__":
@@ -401,12 +397,12 @@ if __name__ == "__main__":
     if args.input and args.output:
         tt.translate_file(args.input, args.output, args.format)
     else:
-        print "Interactively translating from",args.source,"to", args.target
+        print("Interactively translating from",args.source,"to", args.target)
         srctext = ""
         while srctext not in ["q", "exit", "Q"]:
-            srctext = raw_input(args.source + ">> ")
+            srctext = input(args.source + ">> ")
             if srctext == "":
                 continue
             
             lines = plaintexttolines(srctext)
-            print args.target + ": " + linestoplaintext(tt.translate(lines))[0].strip()
+            print(args.target + ": " + linestoplaintext(tt.translate(lines))[0].strip())

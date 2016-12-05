@@ -43,6 +43,17 @@ def gettag(line):
         return sline[0]
     return None
 
+def getapikey():
+    # As of Aug 1 2016, Google API key.
+    try:
+        with open("apifile") as f:
+            API_KEY=f.read().strip()
+    except IOError:
+        logger.error("Cannot open: apifile")
+        API_KEY = None
+    return API_KEY
+
+
 
 
 def readconll(fname):
