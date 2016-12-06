@@ -32,7 +32,7 @@ See [ngram-count](http://www.speech.sri.com/projects/srilm/manpages/ngram-count.
 
 To translate eng.conll from English (eng) into Turkish (tur):
 
-   $ python translate.py -i eng.conll -o tur.conll -t tur
+    $ python translate.py -i eng.conll -o tur.conll -t tur
 
 `eng.conll` is inculded in the repository. `tur.conll` is produced when this is done. Notice that the `-s` argument is not needed, because English is the default source.
 
