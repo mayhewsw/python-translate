@@ -2,8 +2,8 @@
 import logging
 import codecs
 
-FORMAT = u"[%(asctime)s] : %(filename)s.%(funcName)s():%(lineno)d - %(message)s"
-DATEFMT = u'%H:%M:%S, %m/%d/%Y'
+FORMAT = "[%(asctime)s] : %(filename)s.%(funcName)s():%(lineno)d - %(message)s"
+DATEFMT = '%H:%M:%S, %m/%d/%Y'
 #logging.basicConfig(level=logging.DEBUG, format=FORMAT, datefmt=DATEFMT)
 logging.basicConfig(level=logging.INFO, format=FORMAT, datefmt=DATEFMT)
 logger = logging.getLogger(__name__)
@@ -53,9 +53,6 @@ def getapikey():
         API_KEY = None
     return API_KEY
 
-
-
-
 def readconll(fname):
     """ Read lines from a conll file."""
     with codecs.open(fname, "r", "utf-8") as f:
@@ -73,7 +70,6 @@ def readplaintext(fname):
     lines in the same format as a conll file, but with no labels."""
     with codecs.open(fname, "r", "utf-8") as f:
         lines = f.readlines()
-
     outlines = []
     for line in lines:
         outlines.extend(plaintexttolines(line))
@@ -147,8 +143,8 @@ def uzbekexpand(w):
     if modified:
         ret.append(w)
 
-    if u"ʻ" in w:
-        ret.append(w.replace(u"ʻ", ""))
+    if "ʻ" in w:
+        ret.append(w.replace("ʻ", ""))
 
     return ret
 

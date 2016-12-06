@@ -17,9 +17,10 @@ Installation:
 
 ## Requirements
 
+* python 3
 * [swig-srilm wrapper](https://github.com/desilinguist/swig-srilm/)
 * [gensim](https://radimrehurek.com/gensim/) (if you want to use the word vector expansion part)
-* Language model created by [SRILM](http://www.speech.sri.com/projects/srilm/).
+* (Optional, but recommended) Language model created by [SRILM](http://www.speech.sri.com/projects/srilm/).
 
 Here's the simplest possible way to make a language model (<input file> is just a text file):
 
@@ -29,9 +30,11 @@ See [ngram-count](http://www.speech.sri.com/projects/srilm/manpages/ngram-count.
 
 ## Usage
 
-To translate a file:
+To translate eng.conll from English (eng) into Turkish (tur):
 
-   $ python translate.py -i <input file> -o <output file> -s <src lang> -t <target lang>
+   $ python translate.py -i eng.conll -o tur.conll -t tur
+
+`eng.conll` is inculded in the repository. `tur.conll` is produced when this is done. Notice that the `-s` argument is not needed, because English is the default source.
 
 To translate interactively (from English, to Turkish):
 

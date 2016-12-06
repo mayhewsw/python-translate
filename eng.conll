@@ -1,0 +1,14 @@
+B-PER	0	0	x	NNP	Coste	x	x	0
+O	0	1	x	VBD	said	x	x	0
+O	0	2	x	PRP	he	x	x	0
+O	0	3	x	VBD	had	x	x	0
+O	0	4	x	VBN	approached	x	x	0
+O	0	5	x	DT	the	x	x	0
+O	0	6	x	NN	player	x	x	0
+O	0	7	x	CD	two	x	x	0
+O	0	8	x	NNS	months	x	x	0
+O	0	9	x	RB	ago	x	x	0
+O	0	10	x	RB	about	x	x	0
+O	0	11	x	DT	a	x	x	0
+O	0	12	x	NN	comeback	x	x	0
+O	0	13	x	.	.	x	x	0

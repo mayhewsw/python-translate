@@ -1,8 +1,6 @@
-from __future__ import print_function
-from googleapiclient.discovery import build
+from apiclient.discovery import build
 import codecs
 import html.parser
-#import HTMLParser
 import shelve
 from collections import defaultdict
 import string
@@ -166,13 +164,15 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="")
 
-    parser.add_argument("fname",help="Input file name (first word of each row is translated)")
-    parser.add_argument("outfname",help="Output file. Format: origword  transword")
-    parser.add_argument("source",help="Source language code (2 letter)")
-    parser.add_argument("target",help="Target language code (2 letter)")
-    parser.add_argument("--format",help="Format of input file", choices=["conll", "plaintext"], default="conll")
+    parser.add_argument("--input", "-i",help="Input file name (fifth word of each row is translated)", required=True)
+    parser.add_argument("--output", "-o",help="Output file.", required=True)
+    parser.add_argument("--source","-s", help="Source language code (2 letter)", default="en")
+    parser.add_argument("--target","-t", help="Target language code (2 letter)", required=True)
+    parser.add_argument("--format","-f", help="Format of input file", choices=["conll", "plaintext"], default="conll")
+
+
     
     args = parser.parse_args()
     
-    translatefile(args.fname, args.outfname, args.source, args.target, args.format)
+    translatefile(args.input, args.output, args.source, args.target, args.format)
     

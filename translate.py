@@ -1,4 +1,3 @@
-#!/usr/bin/python
 #  -*- coding: utf-8 -*-
 import codecs,os,re,random
 import html.parser
@@ -25,13 +24,13 @@ class Translator:
         if self.usevecs:
             self.load_vecs()
         else:
-            logger.info("NOT USING VECTOR EXPANSION")
+            logger.info("Not using vector expansion")
 
         self.usetaglists= False        
         if self.usetaglists:
             self.load_taglists()
         else:
-            logger.info("NOT USING TAGLISTS!")        
+            logger.info("Not using taglists!")        
 
             
     def load_dictionary(self):
@@ -60,7 +59,7 @@ class Translator:
         elif self.method == "google":
             #import googletrans
             #self.dct = googletrans.getgooglemapping(fname, self.source, self.target)
-            print("Doesn't work right now...")
+            logger.error("Doesn't work right now...")
         elif self.method == "lexicon":
             import lexicons        
             self.dct,_ = lexicons.getlexiconmapping(self.source, self.target)
@@ -71,9 +70,10 @@ class Translator:
 
 
     def load_lm(self):
-        # read the LM: initialize with     
+        # read the LM
         self.lm = initLM(3)
         tgt2 = langmap[self.target]
+        
         # this is the path of a language model created by SRILM.
         LMPATH="/shared/corpora/ner/lorelei/"+tgt2+"/"+tgt2+"-lm.txt"
         
@@ -244,7 +244,7 @@ class Translator:
                             score = newopts[opt] + 0.0000001
                             if len(opt.split()) == 0:
                                 continue
-                            text = " ".join(context + [opt.split()[0]]).encode("utf8")
+                            text = " ".join(context + [opt.split()[0]])
                             lmscore = getNgramProb(self.lm, text, len(context)+1)
                             newopts[opt] = lmscore + math.log(score)
                             #print opt, lmscore, score
