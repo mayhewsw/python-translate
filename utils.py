@@ -56,14 +56,15 @@ def getapikey():
 def cost(chars):
     """ Calculate the cost of using the API and
     confirm with the user """
-    
+
+    # Google API cost as of August 2016
     price = 20 / 1000000.
     cost = price * chars
     
     logger.info("It will cost ${:0<#4.2} to run this script.".format(cost))
     c = ""
     if cost == 0.0:
-        print("zero cost, so running automatically...")
+        logger.info("zero cost, so running automatically...")
         c = "y"
     while c not in ["y", "n"]:
         c = input("Continue? (y/n)  ")
@@ -75,7 +76,6 @@ def cost(chars):
             print("please enter y or n")
 
 
-
 def readconll(fname):
     """ Read lines from a conll file."""
     with codecs.open(fname, "r", "utf-8") as f:
@@ -83,10 +83,10 @@ def readconll(fname):
     return lines
 
 def writeconll(outfname, outlines):
+    """ Writes conll lines out to file """
     with codecs.open(outfname, "w", "utf-8") as out:
        for line in outlines:
            out.write(line);
-    
 
 def readplaintext(fname):
     """ Plaintext refers to a single sentence per line. This returns

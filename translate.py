@@ -5,11 +5,16 @@ from collections import defaultdict
 import string, math
 from srilm import *
 from utils import *
-from gensim.models.word2vec import *
+
 
 class Translator:
 
     def __init__(self, method, source, target, lexname=None):
+        """ Method can be google or lexicon, source/target are
+        3 letter names, lexname is the name of a specific lexicon
+        (needs to be gzipped masterlex format) """
+
+        
         self.method = method
         self.source = source
         self.target = target
@@ -61,7 +66,6 @@ class Translator:
             #self.dct = googletrans.getgooglemapping(fname, self.source, self.target)
             logger.error("Doesn't work right now...")
         elif self.method == "lexicon":
-            import lexicons        
             self.dct,_ = lexicons.getlexiconmapping(self.source, self.target)
 
         else:
@@ -86,6 +90,7 @@ class Translator:
 
 
     def load_vecs(self):
+        from gensim.models.word2vec import Word2Vec
         VECPATH=""
         self.vecs = Word2Vec.load_word2vec_format(VECPATH, binary=True)
         logger.info("Done loading...")
@@ -348,8 +353,8 @@ class Translator:
 
         if len(missedwords) > 0:
             logger.debug("Most popular missed words:")
-            #for w,s in sorted(missedwords.items(), key=lambda p: p[1], reverse=True)[:10]:
-            #    logger.debug("{0} : {1}".format(w,s))
+            for w,s in sorted(missedwords.items(), key=lambda p: p[1], reverse=True)[:10]:
+                logger.debug("{0} : {1}".format(w,s))
             
         return outlines
         
@@ -382,8 +387,10 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Translate a CoNLL file")
 
-    parser.add_argument("--input", "-i",help="Input file name (fifth word of each row is translated)")
-    parser.add_argument("--output", "-o",help="Output file. Format: origword  transword")
+    iogroup = parser.add_argument_group("io", "Arguments for IO. Both must be present.")
+    
+    iogroup.add_argument("--input", "-i",help="Input file name (fifth word of each row is translated)")
+    iogroup.add_argument("--output", "-o",help="Output file. Format: origword  transword")
     parser.add_argument("--method",help="Either google, or lexicon", choices=["lexicon", "google"], default="lexicon")
     parser.add_argument("--source","-s", help="Source language code (3 letter)", default="eng")
     parser.add_argument("--target","-t", help="Target language code (3 letter)", required=True)
@@ -393,6 +400,10 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
 
+    if bool(args.input) != bool(args.output):
+        logger.error("Either both or neither input/output must be present.")
+        exit()
+    
     tt = Translator(args.method, args.source, args.target, args.lexname)
     
     if args.input and args.output:

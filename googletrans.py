@@ -35,11 +35,12 @@ def getgooglemapping(fname, source, target):
                 words.append(srcword)
                 chars += len(srcword)
 
-    # get the cost
+    # get the cost, fail if user refuses.
     utils.cost(chars)
     
     # gather a list of words to be translated.
     for i in range(0, len(words), 20):
+        # Use 75 words at a time, to avoid API limits.
         iwords = words[i:i+75]
         print("size of request:",len(iwords))
         try:
@@ -48,10 +49,9 @@ def getgooglemapping(fname, source, target):
                 translations = response["translations"]
                 for w,t in zip(iwords,translations):
                     tword = t["translatedText"]
-                    # memo can only take strings...
                     memo[w] = tword
             else:
-                print("WHAAAAT")
+                print("No translations in returned list...")
 
         except Exception as e:
             print("Whoops... exception")

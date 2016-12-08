@@ -4,10 +4,10 @@ import html.parser
 import shelve
 from collections import defaultdict
 import string
-from utils import *
+import utils
 
 # NICE TRY INTERNET
-API_KEY = getapikey()
+API_KEY = utils.getapikey()
 
 def translatefile(fname, outfname, source, target, format="conll"):
     """
@@ -22,14 +22,14 @@ def translatefile(fname, outfname, source, target, format="conll"):
     h = html.parser.HTMLParser()
     
     if format == "conll":
-        lines = readconll(fname)
+        lines = utils.readconll(fname)
     elif format == "plaintext":
-        lines = readplaintext(fname)
+        lines = utils.readplaintext(fname)
     else:
         print("Format not known: " + format)
         exit()
 
-        
+
     memo = shelve.open("shelves/sents-" + source + "-" + target + ".shelf")
         
     sents = []
@@ -50,8 +50,9 @@ def translatefile(fname, outfname, source, target, format="conll"):
             sents.append(sent)
             sent = ""
 
-            #if len(sents) > 10:
-            #break
+    if len(sent) > 0:
+        sents.append(sent)
+
             
     chars = 0
     trans = []
@@ -60,23 +61,10 @@ def translatefile(fname, outfname, source, target, format="conll"):
             trans.append(sent)
             chars += len(sent)
 
-    price = 20 / 1000000.
-    cost = price * chars
-                
-    print("It will cost",cost,"to run this script.")
-    c = ""
-    if cost == 0.0:
-        print("zero cost, so running automatically...")
-        c = "y"
-    while c not in ["y", "n"]:
-        c = input("Continue? (y/n)  ")
-        if c == "y":
-            break
-        elif c == "n":
-            exit()
-        else:
-            print("please enter y or n")
 
+    # calculate the cost and fail if user refuses
+    utils.cost(chars)
+    
     outsents = []
     # gather a list of words to be translated.
     for i in range(0, len(trans), 20):
@@ -89,9 +77,8 @@ def translatefile(fname, outfname, source, target, format="conll"):
                 for w,t in zip(isents,translations):
                     tsent = t["translatedText"]
                     memo[w] = tsent
-                    #outsents.append(tsent)
             else:
-                print("WHAAAAT")
+                print("No translations...")
 
         except Exception as e:
             print("Whoops... exception")
@@ -150,9 +137,9 @@ def translatefile(fname, outfname, source, target, format="conll"):
 
     print("Writing to:", outfname)
     if format == "conll":
-        writeconll(outfname, outlines)
+        utils.writeconll(outfname, outlines)
     elif format == "plaintext":
-        writeplaintext(outfname, outlines)
+        utils.writeplaintext(outfname, outlines)
     else:
         print("Unknown format: " + format)
 
