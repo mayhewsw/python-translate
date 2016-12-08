@@ -53,6 +53,29 @@ def getapikey():
         API_KEY = None
     return API_KEY
 
+def cost(chars):
+    """ Calculate the cost of using the API and
+    confirm with the user """
+    
+    price = 20 / 1000000.
+    cost = price * chars
+    
+    logger.info("It will cost ${:0<#4.2} to run this script.".format(cost))
+    c = ""
+    if cost == 0.0:
+        print("zero cost, so running automatically...")
+        c = "y"
+    while c not in ["y", "n"]:
+        c = input("Continue? (y/n)  ")
+        if c == "y":
+            break
+        elif c == "n":
+            exit()
+        else:
+            print("please enter y or n")
+
+
+
 def readconll(fname):
     """ Read lines from a conll file."""
     with codecs.open(fname, "r", "utf-8") as f:
