@@ -38,6 +38,8 @@ def readlexicon(fname):
             pairs[(ew.lower(),fw.lower())] += 1
 
         f2e[f].add(e)
+        f2e[f.lower()].add(e)
+        
         e2f[e].add(f)
         e2f[e.lower()].add(f)
 
@@ -71,7 +73,22 @@ def getlexiconmapping(source, target):
         return dct,f2e
 
     if target == "eng":
-        raise Exception("eng as target is not supported")
+        e2f,f2e,pairs = readlexicon(masterlexname(source))        
+        
+        # normalize the dictionary with scores.
+        for k in list(f2e.keys()):
+            
+            # vive la difference (VLD): pair is reversed.
+            scores = [(w, pairs[(w,k)]) for w in f2e[k]]
+            t1 = float(sum([p[1] for p in scores]))
+            t1 = max(0.1, t1)
+            nscores = sorted([(p[0], p[1] / t1) for p in scores], key=lambda p: p[1])
+
+            for p in nscores:
+                dct[k][p[0]] += p[1]
+
+        
+        return dct, e2f
     
     l1dict,l1rev,pairs1 = readlexicon(masterlexname(source))
     l2dict,l2rev,pairs2 = readlexicon(masterlexname(target))

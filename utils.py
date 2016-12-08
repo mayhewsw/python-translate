@@ -44,7 +44,7 @@ def gettag(line):
     return None
 
 def getapikey():
-    # As of Aug 1 2016, Google API key.
+    """ Loads a file called apifile that contains the Google API key on a single line """
     try:
         with open("apifile") as f:
             API_KEY=f.read().strip()
@@ -113,7 +113,7 @@ def writeplaintext(outfname, lines):
     outlines = linestoplaintext(lines)
     
     with codecs.open(outfname, "w", "utf-8") as out:
-       for line in sents:
+       for line in outlines:
            out.write(line);
 
 def englishexpand(w):

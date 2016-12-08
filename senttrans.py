@@ -6,10 +6,8 @@ from collections import defaultdict
 import string
 from utils import *
 
-
-# As of Aug 1 2016
-API_KEY = "NICE_TRY_INTERNET"
-
+# NICE TRY INTERNET
+API_KEY = getapikey()
 
 def translatefile(fname, outfname, source, target, format="conll"):
     """
@@ -169,8 +167,6 @@ if __name__ == "__main__":
     parser.add_argument("--source","-s", help="Source language code (2 letter)", default="en")
     parser.add_argument("--target","-t", help="Target language code (2 letter)", required=True)
     parser.add_argument("--format","-f", help="Format of input file", choices=["conll", "plaintext"], default="conll")
-
-
     
     args = parser.parse_args()
     
