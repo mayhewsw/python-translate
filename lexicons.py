@@ -1,41 +1,65 @@
 from utils import *
 from collections import defaultdict
 from itertools import product
-import gzip,codecs
+import gzip
+import codecs
 
 
-def masterlexname(target):
-    """ If you want to use the masterlex files, they use
-    this naming convention"""
-    return LEXICONPATH + "{0}-eng.masterlex.txt.gz".format(target)
+def dictname(target):
+    """ This uses the naming convention from Ellie Pavlick's
+    mechanical turk dictionaries.
+
+    :param target: target language code (2 or 3 letters)
+    """
+    if USEMASTERLEX:
+        return LEXICONPATH + "{0}-eng.masterlex.txt.gz".format(target)
+    elif USEPAVLICK:
+        return LEXICONPATH + "/dict.{}".format(target)
+
 
 def readlexicon(fname):
     """ Reads files from Katrin Kirchhoff/Mark H-J lexicons
-
-    :param target: target language code (3 letters)
     """
     f2e = defaultdict(set)
     e2f = defaultdict(set)
 
     logger.info("Reading " + fname)
-    with gzip.open(fname, "rb") as f:
-        lines = f.readlines()
+    if USEMASTERLEX:
+        with gzip.open(fname, "rb") as f:
+            lines = f.readlines()
+    elif USEPAVLICK:
+        with open(fname, "r") as f:
+            lines = f.readlines()
+
+        # some lines have multiple definitions in them.
+        # expand these to multiple lines
+        newlines = []
+        for line in lines:
+            sline = line.strip().split("\t")
+            for eng in sline[1:]:
+                newlines.append(sline[0] + "\t" + eng)
+        lines = newlines
 
     pairs = defaultdict(int)
 
     for line in lines:
-        sline = line.split(b"\t")
-        f = sline[0].decode("utf8")        
-        e = sline[5].decode("utf8")
+        sline = line.strip().split("\t")
 
-        pairs[(e,f)] += 1
-        pairs[(e.lower(),f.lower())] += 1
+        if USEMASTERLEX:
+            f = sline[0]
+            e = sline[5]
+        elif USEPAVLICK:
+            f = sline[0]
+            e = sline[1]
+
+        pairs[(e, f)] += 1
+        pairs[(e.lower(), f.lower())] += 1
         
         ewords = e.split()
         fwords = f.split()
-        for ew,fw in product(ewords,fwords):
-            pairs[(ew,fw)] += 1
-            pairs[(ew.lower(),fw.lower())] += 1
+        for ew, fw in product(ewords, fwords):
+            pairs[(ew, fw)] += 1
+            pairs[(ew.lower(), fw.lower())] += 1
 
         f2e[f].add(e)
         f2e[f.lower()].add(e)
@@ -43,20 +67,19 @@ def readlexicon(fname):
         e2f[e].add(f)
         e2f[e.lower()].add(f)
 
-        # TODO: what about f.lower()?
-
     logger.info("Num e keys: {0}.".format(len(e2f)))
     numentries = sum(map(len, list(e2f.values())))
     logger.info("Num entries: {0}".format(numentries))
     logger.info("Avg keys per entry: {0}".format(float(numentries) / len(e2f)))
     
-    return e2f,f2e,pairs
+    return e2f, f2e, pairs
+
 
 def getlexiconmapping(source, target):
     dct = defaultdict(lambda: defaultdict(float))
     
     if source == "eng":
-        e2f,f2e,pairs = readlexicon(masterlexname(target))
+        e2f, f2e, pairs = readlexicon(dictname(target))
 
         # normalize the dictionary with scores.
         for k in list(e2f.keys()):
@@ -70,10 +93,10 @@ def getlexiconmapping(source, target):
             for p in nscores:
                 dct[k][p[0]] += p[1]
             
-        return dct,f2e
+        return dct, f2e
 
     if target == "eng":
-        e2f,f2e,pairs = readlexicon(masterlexname(source))        
+        e2f, f2e, pairs = readlexicon(dictname(source))
         
         # normalize the dictionary with scores.
         for k in list(f2e.keys()):
@@ -87,11 +110,10 @@ def getlexiconmapping(source, target):
             for p in nscores:
                 dct[k][p[0]] += p[1]
 
-        
         return dct, e2f
     
-    l1dict,l1rev,pairs1 = readlexicon(masterlexname(source))
-    l2dict,l2rev,pairs2 = readlexicon(masterlexname(target))
+    l1dict, l1rev, pairs1 = readlexicon(dictname(source))
+    l2dict, l2rev, pairs2 = readlexicon(dictname(target))
 
     # these are all english keys
     l1set = set(l1dict.keys())
@@ -99,8 +121,6 @@ def getlexiconmapping(source, target):
     
     inter = l1set.intersection(l2set)
     print("Size of intersection:", len(inter))
-    
-    #import ipdb; ipdb.set_trace()
 
     for s in inter:
         # l1dict[s] is a set. Just get scores for each element of the set. 
@@ -120,12 +140,12 @@ def getlexiconmapping(source, target):
         for p1,p2 in product(nscores1, nscores2):            
             dct[p1[0]][p2[0]] += p1[1] * p2[1]
 
-    return dct,None
+    return dct, None
 
 
 def getFAfile(lang):
     """ This creates a file for fast_align training """
-    dct = readlexicon(masterlexname(lang))
+    dct = readlexicon(dictname(lang))
 
     out = codecs.open("text.eng-"+lang, "w", "utf8")
     
@@ -146,6 +166,4 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
         
-    dct,f2e = getlexiconmapping(args.source, args.target)
-
-    # You can do stuff here to test the lexicon...
+    dct, f2e = getlexiconmapping(args.source, args.target)

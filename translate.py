@@ -72,22 +72,16 @@ class Translator:
             logger.error("Mapping needs to be lexicon or google, is:", self.method)
             self.dct = None
 
-
     def load_lm(self):
         # read the LM
         self.lm = initLM(3)
-        tgt2 = langmap[self.target]
-        
-        # this is the path of a language model created by SRILM.
-        LMPATH="/shared/corpora/ner/lorelei/"+tgt2+"/"+tgt2+"-lm.txt"
-        
+
         if os.path.exists(LMPATH):
             logger.info("Reading " + LMPATH)
             readLM(self.lm, LMPATH)
             logger.info("done reading.")
         else:
             logger.info("No LM today")
-
 
     def load_vecs(self):
         from gensim.models.word2vec import Word2Vec
@@ -211,12 +205,7 @@ class Translator:
                                 break
                     except KeyError:
                         pass
-                    	    
-                
-                # Don't translate PER/ORG
-                #if "B-PER" in tags or "I-PER" in tags:
-                #    hit = False
-                
+
                 # If srcphrase is a name, we want to translate it into the text.
                 # if first tag is B-TAG, and first matches tag of last, then 
                 if self.usetaglists and not hit and srctags[0][0] == "B" and srctags[0][2:] == srctags[-1][2:]:
@@ -226,8 +215,6 @@ class Translator:
                     hit = True
                                         
                 if hit:
-                    #logger.debug(srcphrase)
-
                     # these are now also associated with a score.
                     opts = self.dct[srcphrase]
 
@@ -241,7 +228,6 @@ class Translator:
                         else:
                             context.append(c)
 
-                    #print srcphrase
                     newopts = dict(opts)
                     # select the best option using LM
                     if self.lm:
@@ -252,9 +238,6 @@ class Translator:
                             text = " ".join(context + [opt.split()[0]])
                             lmscore = getNgramProb(self.lm, text, len(context)+1)
                             newopts[opt] = lmscore + math.log(score)
-                            #print opt, lmscore, score
-                            #newopts[opt] = math.log(score)
-                            #newopts[opt] = random.random()
 
                     best = max(list(newopts.items()), key=lambda p: p[1])
                     w = best[0]
@@ -264,7 +247,7 @@ class Translator:
                         logger.debug("{0} : {1} ({2})".format(srcphrase, sb[0], sb[1]))
                     logger.debug("")
 
-                    w = h.unescape(w)
+                    w = html.unescape(w)
 
                     # if last word is an empty line capitalize this word.
                     if len(outlines) > 0  and getword(outlines[-1]) == None:
@@ -300,7 +283,6 @@ class Translator:
                 removes = []
                 if srcphrase in removes:
                     pass
-
                 
                 res = re.search('(\W+)', srcphrase)
                 if res is not None:
@@ -354,11 +336,10 @@ class Translator:
         if len(missedwords) > 0:
             logger.debug("Most popular missed words:")
             for w,s in sorted(missedwords.items(), key=lambda p: p[1], reverse=True)[:10]:
-                logger.debug("{0} : {1}".format(w,s))
+                logger.debug("{0} : {1}".format(w, s))
             
         return outlines
-        
-            
+
     def translate_file(self, fname, outfname, format="conll"):
         """ This actually does the translation, given a word mapping."""
 
@@ -372,8 +353,7 @@ class Translator:
 
         # everything is done in conll format. That is... one word per line. 
         outlines = self.translate(lines)
-        
-            
+
         print("Writing to:", outfname)
         if format == "conll":
             writeconll(outfname, outlines)
@@ -389,13 +369,13 @@ if __name__ == "__main__":
 
     iogroup = parser.add_argument_group("io", "Arguments for IO. Both must be present.")
     
-    iogroup.add_argument("--input", "-i",help="Input file name (fifth word of each row is translated)")
-    iogroup.add_argument("--output", "-o",help="Output file. Format: origword  transword")
-    parser.add_argument("--method",help="Either google, or lexicon", choices=["lexicon", "google"], default="lexicon")
-    parser.add_argument("--source","-s", help="Source language code (3 letter)", default="eng")
-    parser.add_argument("--target","-t", help="Target language code (3 letter)", required=True)
-    parser.add_argument("--format","-f", help="Format of input file", choices=["conll", "plaintext"], default="conll")
-    parser.add_argument("--lexname","-l", help="Name of special lexicon")
+    iogroup.add_argument("--input", "-i", help="Input file name (fifth word of each row is translated)")
+    iogroup.add_argument("--output", "-o", help="Output file. Format: origword  transword")
+    parser.add_argument("--method", help="Either google, or lexicon", choices=["lexicon", "google"], default="lexicon")
+    parser.add_argument("--source", "-s", help="Source language code (3 letter)", default="eng")
+    parser.add_argument("--target", "-t", help="Target language code (3 letter)", required=True)
+    parser.add_argument("--format", "-f", help="Format of input file", choices=["conll", "plaintext"], default="conll")
+    parser.add_argument("--lexname", "-l", help="Name of special lexicon")
 
     
     args = parser.parse_args()
@@ -409,7 +389,7 @@ if __name__ == "__main__":
     if args.input and args.output:
         tt.translate_file(args.input, args.output, args.format)
     else:
-        print("Interactively translating from",args.source,"to", args.target)
+        print("Interactively translating from {} to {}. q, Q, or exit to quit.".format(args.source, args.target))
         srctext = ""
         while srctext not in ["q", "exit", "Q"]:
             srctext = input(args.source + ">> ")
